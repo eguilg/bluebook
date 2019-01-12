@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class Preceptron(object):
+class Perceptron(object):
 
 	def __init__(self, batch_size, learning_rate,
 				 max_iter=200, shuffle=True,
@@ -26,7 +26,7 @@ class Preceptron(object):
 		self.epsilon = epsilon
 		self.n_iter_no_change = n_iter_no_change
 
-	def _fit(self, X, y):
+	def _fit(self, X, y, X_val=None, y_val=None):
 		n_sample, self._n_features = X.shape
 
 		if y.ndim != 1:
@@ -42,9 +42,13 @@ class Preceptron(object):
 		self._random_state.shuffle(shuffled_idx)
 		X, y = X[shuffled_idx], y[shuffled_idx]
 		y = y * 2 - 1  # map to -1/1
-		p_split = int(n_sample * self.validation_fraction)
-		X_val, y_val = X[:p_split], y[:p_split]
-		X_train, y_train = X[p_split:], y[p_split:]
+
+		if X_val is None or y_val is None:
+			p_split = int(n_sample * self.validation_fraction)
+			X_val, y_val = X[:p_split], y[:p_split]
+			X_train, y_train = X[p_split:], y[p_split:]
+		else:
+			X_train, y_train = X, y
 
 		n_train = X_train.shape[0]
 
@@ -61,7 +65,7 @@ class Preceptron(object):
 			#  miss classified sample
 			d = (-y_batch * (np.dot(X_batch, self._w) + self._b))
 			M_mask = d > 0
-
+			train_loss = (d * M_mask).sum() / bs
 
 			# grad_w = - 0.5 * (((M_mask * y_batch)[:, None] * X_batch) / np.sqrt(np.abs(d))[:, None]).sum(axis=0) / bs
 			# grad_b = - 0.5 * ((M_mask * y_batch) / np.sqrt(np.abs(d))).sum() / bs
@@ -84,7 +88,7 @@ class Preceptron(object):
 			if self._no_improvement_count > self.n_iter_no_change:
 				break
 			error = M_mask_val.sum() / y_val.shape[0]
-			print('Iter:%d, val loss:%.5f, val error:%.5f' % (i, loss, error))
+			print('Iter:%d, train_loss: %.5f, val loss:%.5f, val error:%.5f' % (i, train_loss, loss, error))
 
 			self.w = self._w
 			self.b = self._b
@@ -111,30 +115,31 @@ class Preceptron(object):
 		self.w_init = self._w.copy()
 		self.b_init = self._b.copy()
 
-	def fit(self, X, y):
-		self._fit(X, y)
+	def fit(self, X, y, X_val=None, y_val=None):
+		self._fit(X, y, X_val, y_val)
+
 
 if __name__ == '__main__':
 	from sklearn.datasets import make_classification
+	from sklearn.model_selection import train_test_split
 	import matplotlib.pyplot as plt
 
-	X, y = make_classification(n_samples=5000, n_features=2, n_redundant=0, n_repeated=0, n_clusters_per_class=1, n_classes=2)
+	X, y = make_classification(n_samples=5000, n_features=2, n_redundant=0, n_repeated=0, n_clusters_per_class=1,
+							   n_classes=2)
 
-	pp = Preceptron(500, 0.001, max_iter=10000)
+	X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5, random_state=42)
 
+	pp = Perceptron(500, 0.001, max_iter=10000)
+	pp.fit(X_train, y_train)#, X_test, y_test)
 
-
-
-	pp.fit(X,y)
-
-	plt.scatter(X[:, 0], X[:,1], c=y, s=2, marker='o')
-	x1 = np.array([X[:, 0].min(), X[:, 0].max()])
+	plt.scatter(X_test[:, 0], X_test[:, 1], c=y_test, s=2, marker='o')
+	x1 = np.array([X_test[:, 0].min(), X_test[:, 0].max()])
 	x2 = -(pp.w[0] * x1 + pp.b) / pp.w[1]
 	plt.plot(x1, x2)
 
-	# plt.scatter(X[:, 0], X[:, 1], c=y, s=2, marker='o')
-	# x1 = np.array([X[:, 0].min(), X[:, 0].max()])
-	# x2 = -(pp.w_init[0] * x1 + pp.b_init) / pp.w[1]
-	# plt.plot(x1, x2)
+	plt.scatter(X_test[:, 0], X_test[:, 1], c=y_test, s=2, marker='o')
+	x1 = np.array([X_test[:, 0].min(), X[:, 0].max()])
+	x2 = -(pp.w_init[0] * x1 + pp.b_init) / pp.w_init[1]
+	plt.plot(x1, x2)
 
 	plt.show()
