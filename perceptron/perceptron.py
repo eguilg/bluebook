@@ -128,5 +128,6 @@ if __name__ == '__main__':
 	plt.plot(x1, x2)
 	plt.plot(x1, x3)
 	plt.legend(('trained weight', 'random initial weight'), loc='best')
+	plt.show()
 	plt.savefig('./result.png')
 
