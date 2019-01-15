@@ -5,25 +5,14 @@ class Perceptron(object):
 
 	def __init__(self, batch_size, learning_rate,
 				 max_iter=200, shuffle=True,
-				 seed=None, tol=1e-4,
-				 verbose=False, momentum=0.9,
-				 nesterovs_momentum=True, early_stopping=False,
-				 validation_fraction=0.1, beta_1=0.9, beta_2=0.999,
-				 epsilon=1e-8, n_iter_no_change=10):
+				 seed=None, validation_fraction=0.1,
+				 n_iter_no_change=10):
 		self.batch_size = batch_size
 		self.learning_rate = learning_rate
 		self.max_iter = max_iter
 		self.shuffle = shuffle
 		self.seed = seed
-		self.tol = tol
-		self.verbose = verbose
-		self.momentum = momentum
-		self.nesterovs_momentum = nesterovs_momentum
-		self.early_stopping = early_stopping
 		self.validation_fraction = validation_fraction
-		self.beta_1 = beta_1
-		self.beta_2 = beta_2
-		self.epsilon = epsilon
 		self.n_iter_no_change = n_iter_no_change
 
 	def _fit(self, X, y, X_val=None, y_val=None):
@@ -55,6 +44,7 @@ class Perceptron(object):
 		batch_size = min(self.batch_size, n_train)
 		batch_num = (n_train // batch_size)
 		print(batch_num)
+
 		for i in range(self.max_iter):
 			batch_s = i % batch_num
 			batch_e = min(batch_s + batch_size, n_train)
@@ -62,11 +52,12 @@ class Perceptron(object):
 
 			bs = batch_e - batch_s
 
-			#  miss classified sample
+			#  miss classified sample mask
 			d = (-y_batch * (np.dot(X_batch, self._w) + self._b))
 			M_mask = d > 0
 			train_loss = (d * M_mask).sum() / bs
 
+			# use sqrt(distance) as distance
 			# grad_w = - 0.5 * (((M_mask * y_batch)[:, None] * X_batch) / np.sqrt(np.abs(d))[:, None]).sum(axis=0) / bs
 			# grad_b = - 0.5 * ((M_mask * y_batch) / np.sqrt(np.abs(d))).sum() / bs
 
@@ -106,11 +97,8 @@ class Perceptron(object):
 
 		self.loss_curve_ = []
 		self._no_improvement_count = 0
-		if self.early_stopping:
-			self.validation_scores_ = []
-			self.best_validation_score_ = -np.inf
-		else:
-			self.best_loss_ = np.inf
+
+		self.best_loss_ = np.inf
 
 		self.w_init = self._w.copy()
 		self.b_init = self._b.copy()
@@ -130,16 +118,14 @@ if __name__ == '__main__':
 	X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5, random_state=42)
 
 	pp = Perceptron(500, 0.001, max_iter=10000)
-	pp.fit(X_train, y_train)#, X_test, y_test)
+	pp.fit(X_train, y_train)  # , X_test, y_test)
 
 	plt.scatter(X_test[:, 0], X_test[:, 1], c=y_test, s=2, marker='o')
+
 	x1 = np.array([X_test[:, 0].min(), X_test[:, 0].max()])
-	x2 = -(pp.w[0] * x1 + pp.b) / pp.w[1]
+	x2 = -(pp.w[0] * x1 + pp.b) / pp.w[1]  # trained weight
+	x3 = -(pp.w_init[0] * x1 + pp.b_init) / pp.w_init[1]  # initial weight
 	plt.plot(x1, x2)
-
-	plt.scatter(X_test[:, 0], X_test[:, 1], c=y_test, s=2, marker='o')
-	x1 = np.array([X_test[:, 0].min(), X[:, 0].max()])
-	x2 = -(pp.w_init[0] * x1 + pp.b_init) / pp.w_init[1]
-	plt.plot(x1, x2)
-
+	plt.plot(x1, x3)
+	plt.legend(('trained weight', 'random initial weight'), loc='best')
 	plt.show()
