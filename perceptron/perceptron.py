@@ -111,13 +111,13 @@ if __name__ == '__main__':
 	from sklearn.datasets import make_classification
 	from sklearn.model_selection import train_test_split
 	import matplotlib.pyplot as plt
-
+	SEED = 1229
 	X, y = make_classification(n_samples=5000, n_features=2, n_redundant=0, n_repeated=0, n_clusters_per_class=1,
-							   n_classes=2)
+							   n_classes=2, random_state=SEED)
 
 	X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5, random_state=42)
 
-	pp = Perceptron(500, 0.001, max_iter=10000)
+	pp = Perceptron(500, 0.001, max_iter=10000, seed=SEED)
 	pp.fit(X_train, y_train)  # , X_test, y_test)
 
 	plt.scatter(X_test[:, 0], X_test[:, 1], c=y_test, s=2, marker='o')
