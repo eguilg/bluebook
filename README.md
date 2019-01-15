@@ -1,5 +1,5 @@
 # bluebook
 Implementation of algorithms in *Statistical Learning Method*
 
-+ [perceptron](perceptron/)
++ [Perceptron](perceptron/)
 + *TODO:* KNN
