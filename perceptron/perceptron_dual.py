@@ -26,7 +26,7 @@ class Perceptron(object):
 			raise ValueError('0 dimension of X and y must be equal. '
 							 'got X of %d, y of %d.' % (X.shape[0], y.shape[0]))
 
-		self._initialize()
+		# get train val sets
 		shuffled_idx = list(range(n_sample))
 		self._random_state.shuffle(shuffled_idx)
 		X, y = X[shuffled_idx], y[shuffled_idx]
@@ -41,33 +41,38 @@ class Perceptron(object):
 
 		n_train = X_train.shape[0]
 
+		# init
+		self._initialize(n_train)
+
+		#  Gram matrix
+		gm = np.dot(X_train, X_train.T)
+
+		self.w_init = (self.alpha_init[:, None] * y_train[:, None] * X_train).sum(axis=0)
+
+		#  prepare batch
 		batch_size = min(self.batch_size, n_train)
 		batch_num = (n_train // batch_size)
-		print(batch_num)
+		# print(batch_num)
 
 		for i in range(self.max_iter):
 			batch_s = i % batch_num
 			batch_e = min(batch_s + batch_size, n_train)
-			X_batch, y_batch = X_train[batch_s:batch_e], y_train[batch_s: batch_e]
+			# X_batch, y_batch = X_train[batch_s:batch_e], y_train[batch_s: batch_e]
+			gm_batch, y_batch = gm[batch_s:batch_e], y_train[batch_s: batch_e]
 
 			bs = batch_e - batch_s
 
+			alpha_y = self._alpha * y_train
 			#  miss classified sample mask
-			d = (-y_batch * (np.dot(X_batch, self._w) + self._b))
+			d = -y_batch * ((alpha_y[None, :] * gm_batch).sum(axis=1) + self._b)
 			M_mask = d > 0
 			train_loss = (d * M_mask).sum() / bs
+			M_idx = np.array(range(batch_s, batch_e))[M_mask]
 
-			# use sqrt(distance) as distance
-			# grad_w = - 0.5 * (((M_mask * y_batch)[:, None] * X_batch) / np.sqrt(np.abs(d))[:, None]).sum(axis=0) / bs
-			# grad_b = - 0.5 * ((M_mask * y_batch) / np.sqrt(np.abs(d))).sum() / bs
+			self._alpha[M_idx] += self.learning_rate * M_mask.sum() / bs
+			self._b += self.learning_rate * (M_mask * y_batch).sum() / bs
 
-			grad_w = - ((M_mask * y_batch)[:, None] * X_batch).sum(axis=0) / bs
-			grad_b = - (M_mask * y_batch).sum() / bs
-
-			self._w -= self.learning_rate * grad_w
-			self._b -= self.learning_rate * grad_b
-
-			loss = (-y_val * (np.dot(X_val, self._w) + self._b))
+			loss = -y_val * np.dot(X_val, (self._alpha[:, None] * y_train[:, None] * X_train).sum(axis=0)) + self._b
 			M_mask_val = loss > 0
 			loss = (loss * M_mask_val).sum() / bs
 			self.loss_curve_.append(loss)
@@ -81,16 +86,16 @@ class Perceptron(object):
 			error = M_mask_val.sum() / y_val.shape[0]
 			print('Iter:%d, train_loss: %.5f, val loss:%.5f, val error:%.5f' % (i, train_loss, loss, error))
 
-		self.w = self._w
+		self.w = (self._alpha[:, None] * y_train[:, None] * X_train).sum(axis=0)
 		self.b = self._b
 
-	def _initialize(self):
+	def _initialize(self, n_train_sample):
 		factor = 1
 		self.n_iter_ = 0
 
 		init_bound = np.sqrt(factor / (self._n_features + self._n_outputs))
-		self._w = self._random_state.uniform(-init_bound, init_bound,
-											 self._n_features)
+		self._alpha = self._random_state.uniform(-init_bound, init_bound,
+												 n_train_sample)
 
 		self._b = self._random_state.uniform(-init_bound, init_bound,
 											 self._n_outputs)
@@ -100,7 +105,7 @@ class Perceptron(object):
 
 		self.best_loss_ = np.inf
 
-		self.w_init = self._w.copy()
+		self.alpha_init = self._alpha.copy()
 		self.b_init = self._b.copy()
 
 	def fit(self, X, y, X_val=None, y_val=None):
@@ -111,6 +116,7 @@ if __name__ == '__main__':
 	from sklearn.datasets import make_classification
 	from sklearn.model_selection import train_test_split
 	import matplotlib.pyplot as plt
+
 	SEED = 1229
 	X, y = make_classification(n_samples=5000, n_features=2, n_redundant=0, n_repeated=0, n_clusters_per_class=1,
 							   n_classes=2, random_state=SEED)
@@ -128,8 +134,6 @@ if __name__ == '__main__':
 	plt.plot(x1, x2)
 	plt.plot(x1, x3)
 	plt.legend(('trained weight', 'random initial weight'), loc='best')
-	plt.title('Perceptron')
-	plt.savefig('./result.png')
+	plt.title('Perceptron dual training')
+	plt.savefig('./result_dual.png')
 	plt.show()
-
-
