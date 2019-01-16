@@ -69,8 +69,8 @@ class Perceptron(object):
 			train_loss = (d * M_mask).sum() / bs
 			M_idx = np.array(range(batch_s, batch_e))[M_mask]
 
-			self._alpha[M_idx] += self.learning_rate * M_mask.sum() / bs
-			self._b += self.learning_rate * (M_mask * y_batch).sum() / bs
+			self._alpha[M_idx] += self.learning_rate
+			self._b += self.learning_rate * (M_mask * y_batch).sum()
 
 			loss = -y_val * np.dot(X_val, (self._alpha[:, None] * y_train[:, None] * X_train).sum(axis=0)) + self._b
 			M_mask_val = loss > 0
